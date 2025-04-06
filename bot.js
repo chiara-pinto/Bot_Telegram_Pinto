@@ -6,68 +6,68 @@ const token = conf.key;
 
 const bot = new TelegramBot(token, {polling: true});
 
-const getNHLTeamInfo = async (teamName) => {
-    return new Promise((resolve, reject) => {
+const getTeamStandings = async (teamQuery) => {
+    return new Promise((resolve) => {
         const options = {
-            hostname: 'https://statsapi.web.nhl.com/api/v1/teams',
-            method: 'GET',
-            timeout: 5000 // Timeout di 5 secondi
+            hostname: 'api-web.nhle.com',
+            path: '/v1/standings/2025-04-05',
+            method: 'GET'
         };
 
         const req = https.request(options, (res) => {
             let data = '';
-
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
+            res.on('data', chunk => data += chunk);
 
             res.on('end', () => {
                 try {
-                    const teams = JSON.parse(data).teams;
-                    const team = teams.find(t => t.name.toLowerCase().includes(teamName.toLowerCase()));
+                    const json = JSON.parse(data);
+                    const teams = json.standings;
+
+                    // Cerca squadra per nome (case insensitive)
+                    const team = teams.find(t =>
+                        t.teamName.default.toLowerCase().includes(teamQuery.toLowerCase())
+                    );
 
                     if (!team) {
-                        resolve(` Squadra \"${teamName}\" non trovata. Prova con un altro nome.`);
+                        resolve(`Squadra "${teamQuery}" non trovata nelle classifiche NHL.`);
                     } else {
-                        resolve(`🏒 *${team.name}*
-                        Sede: ${team.locationName}
-                        Arena: ${team.venue.name}
-                        Fondazione: ${team.firstYearOfPlay}
-                        [Sito ufficiale](${team.officialSiteUrl})`);
+                        const msg = ` *${team.teamName.default}* - Statistiche (05 Aprile 2025)
+
+                        Punti: ${team.points}
+                        Vittorie (Reg + OT): ${team.regulationPlusOtWins}
+                        Gol in trasferta: ${team.roadGoalsFor}
+                        Gol subiti in trasferta: ${team.roadGoalsAgainst}
+                        Serie attuale: ${team.streakCode}${team.streakCount}`;
+
+                        resolve(msg);
                     }
-                } catch (error) {
-                    console.error('Errore nel parsing dei dati:', error);
-                    resolve('Errore nel recupero delle informazioni. Riprova più tardi.');
+                } catch (err) {
+                    console.error("Errore parsing JSON:", err);
+                    resolve(" Errore nella lettura dei dati della classifica.");
                 }
             });
         });
 
-        req.on('error', (error) => {
-            console.error('Errore nella richiesta HTTP:', error);
-            resolve('Errore di connessione all\'API NHL. Controlla la tua rete o riprova più tardi.');
-        });
-
-        req.on('timeout', () => {
-            req.destroy();
-            console.error('Errore: richiesta scaduta.');
-            resolve('⏳ Il server NHL non ha risposto in tempo. Riprova più tardi.');
+        req.on('error', (err) => {
+            console.error("Errore richiesta:", err);
+            resolve(" Errore nella richiesta all'API NHL.");
         });
 
         req.end();
     });
 };
 
-// Gestione dei comandi e messaggi
+// Gestione dei messaggi del bot
 bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text.trim();
 
     if (text === "/start") {
-        bot.sendMessage(chatId, "👋 Benvenuto! Invia il nome di una squadra NHL per ottenere informazioni. 🏒");
+        bot.sendMessage(chatId, "Benvenuto! Scrivi il nome di una squadra NHL per vedere la sua posizione in classifica.");
     } else if (text === "/help") {
-        bot.sendMessage(chatId, "📌 *Comandi disponibili:*\n/start - Avvia il bot\n/help - Mostra questo elenco di comandi\n[Nome Squadra] - Ottieni informazioni su una squadra NHL", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, " *Comandi disponibili:*\n/start - Avvia il bot\n/help - Mostra questo messaggio\n\nOppure invia il nome di una squadra NHL, es: `Boston Bruins`, `Toronto`", { parse_mode: "Markdown" });
     } else {
-        const teamInfo = await getNHLTeamInfo(text);
-        bot.sendMessage(chatId, teamInfo, { parse_mode: "Markdown" });
+        const info = await getTeamStandings(text);
+        bot.sendMessage(chatId, info, { parse_mode: "Markdown" });
     }
 });
