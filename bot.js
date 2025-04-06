@@ -6,6 +6,7 @@ const token = conf.key;
 
 const bot = new TelegramBot(token, {polling: true});
 
+// Funzione per ottenere le stats della squadra
 const getTeamStandings = async (teamQuery) => {
     return new Promise((resolve) => {
         const options = {
@@ -29,7 +30,7 @@ const getTeamStandings = async (teamQuery) => {
                     );
 
                     if (!team) {
-                        resolve(`Squadra "${teamQuery}" non trovata nelle classifiche NHL.`);
+                        resolve(` Squadra "${teamQuery}" non trovata nelle classifiche NHL.`);
                     } else {
                         const msg = ` *${team.teamName.default}* - Statistiche (05 Aprile 2025)
 
@@ -43,14 +44,14 @@ const getTeamStandings = async (teamQuery) => {
                     }
                 } catch (err) {
                     console.error("Errore parsing JSON:", err);
-                    resolve(" Errore nella lettura dei dati della classifica.");
+                    resolve("⚠️ Errore nella lettura dei dati della classifica.");
                 }
             });
         });
 
         req.on('error', (err) => {
             console.error("Errore richiesta:", err);
-            resolve(" Errore nella richiesta all'API NHL.");
+            resolve("Errore nella richiesta all'API NHL.");
         });
 
         req.end();
@@ -63,7 +64,7 @@ bot.on("message", async (msg) => {
     const text = msg.text.trim();
 
     if (text === "/start") {
-        bot.sendMessage(chatId, "Benvenuto! Scrivi il nome di una squadra NHL per vedere la sua posizione in classifica.");
+        bot.sendMessage(chatId, " Benvenuto! Scrivi il nome di una squadra NHL per vedere la sua posizione in classifica.");
     } else if (text === "/help") {
         bot.sendMessage(chatId, " *Comandi disponibili:*\n/start - Avvia il bot\n/help - Mostra questo messaggio\n\nOppure invia il nome di una squadra NHL, es: `Boston Bruins`, `Toronto`", { parse_mode: "Markdown" });
     } else {
